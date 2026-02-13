@@ -1064,11 +1064,15 @@ final class InputManager {
         })
     }
 
+    private static let latinLetterRegex = try! NSRegularExpression(pattern: "\\p{Latin}")
+
     private func shouldShowRawAlphabetCandidate(_ text: String) -> Bool {
         guard !text.isEmpty else {
             return false
         }
-        return text.rangeOfCharacter(from: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")) != nil
+        let normalized = text.precomposedStringWithCompatibilityMapping
+        let range = NSRange(normalized.startIndex..<normalized.endIndex, in: normalized)
+        return Self.latinLetterRegex.firstMatch(in: normalized, options: [], range: range) != nil
     }
 }
 
