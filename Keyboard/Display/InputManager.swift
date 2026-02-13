@@ -1001,7 +1001,7 @@ final class InputManager {
 
         if let updateResult {
             updateResult { model in
-                model.setResults(results.mainResults)
+                model.setResults(self.prioritizedMainResults(results.mainResults, inputData: inputData))
                 model.resetSupplementaryCandidates()
             }
             if inputData.convertTarget == "えもじ", #available(iOS 26, *) {
@@ -1012,6 +1012,63 @@ final class InputManager {
                 self.complete(candidate: firstClause)
             }
         }
+    }
+
+    /// 英字を含む入力では、無変換の生入力候補を先頭付近に追加する。
+    private func prioritizedMainResults(_ mainResults: [Candidate], inputData: ComposingText) -> [Candidate] {
+        guard self.keyboardLanguage == .ja_JP else {
+            return mainResults
+        }
+        let rawText = self.rawInputText(from: inputData)
+        guard self.shouldShowRawAlphabetCandidate(rawText) else {
+            return mainResults
+        }
+        guard !mainResults.contains(where: { $0.text == rawText }) else {
+            return mainResults
+        }
+
+        var merged = mainResults
+        let rawCandidate = Candidate(
+            text: rawText,
+            value: -8,
+            composingCount: .surfaceCount(inputData.convertTargetCursorPosition),
+            lastMid: MIDData.一般.mid,
+            data: [
+                DicdataElement(
+                    word: rawText,
+                    ruby: rawText.toKatakana(),
+                    cid: CIDData.固有名詞.cid,
+                    mid: MIDData.一般.mid,
+                    value: -8
+                ),
+            ],
+            actions: [],
+            inputable: true,
+            isLearningTarget: false
+        )
+        let insertionIndex = min(1, merged.count)
+        merged.insert(rawCandidate, at: insertionIndex)
+        return merged
+    }
+
+    private func rawInputText(from inputData: ComposingText) -> String {
+        String(inputData.input.compactMap { element in
+            switch element.piece {
+            case .character(let character):
+                return character
+            case .key(intention: _, input: let input, modifiers: _):
+                return input
+            case .compositionSeparator:
+                return nil
+            }
+        })
+    }
+
+    private func shouldShowRawAlphabetCandidate(_ text: String) -> Bool {
+        guard !text.isEmpty else {
+            return false
+        }
+        return text.rangeOfCharacter(from: CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")) != nil
     }
 }
 
