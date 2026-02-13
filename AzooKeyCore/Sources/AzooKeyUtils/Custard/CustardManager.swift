@@ -78,17 +78,24 @@ public struct CustardManager: CustardManagerProtocol {
         return value16
     }
 
+    private static func containerDirectoryURL() -> URL {
+        if let directoryPath = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedStore.appGroupKey) {
+            return directoryPath
+        }
+        debug("container is unavailable")
+        let fallbackDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("azooKey_fallback_container", isDirectory: true)
+        try? FileManager.default.createDirectory(at: fallbackDirectory, withIntermediateDirectories: true)
+        return fallbackDirectory
+    }
+
     private static func fileURL(name: String) -> URL {
-        let directoryPath = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedStore.appGroupKey)!
+        let directoryPath = containerDirectoryURL()
         let url = directoryPath.appendingPathComponent(directoryName + name)
         return url
     }
 
     private static func directoryExistCheck() {
-        guard let directoryPath = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: SharedStore.appGroupKey) else {
-            debug("container is unavailable")
-            return
-        }
+        let directoryPath = containerDirectoryURL()
         let filePath = directoryPath.appendingPathComponent(directoryName).path
         if !FileManager.default.fileExists(atPath: filePath) {
             do {
